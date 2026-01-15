@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "pyviewarr"
 version = "0.0.0"
-dependencies = ["anywidget"]
+dependencies = ["anywidget", "numpy"]
 readme = "README.md"
 
 # For projects not using `uv`, you can install these development dependencies with:

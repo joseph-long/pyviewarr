@@ -1,10 +1,12 @@
 {
 	"scripts": {
-		"dev": "npm run build -- --sourcemap=inline --watch",
-		"build": "esbuild js/widget.ts --minify --format=esm --bundle --outdir=src/pyviewarr/static",
+		"dev": "node build.mjs --dev --watch",
+		"build": "node build.mjs",
 		"typecheck": "tsc --noEmit"
 	},
-	"dependencies": {},
+	"dependencies": {
+		"viewarr": "file:./viewarr"
+	},
 	"devDependencies": {
 		"@anywidget/types": "^0.2.0",
 		"typescript": "^5.8.3",
