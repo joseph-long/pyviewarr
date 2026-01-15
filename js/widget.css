@@ -3,8 +3,9 @@
 }
 
 .pyviewarr-container {
-	background-color: #1e1e1e;
-	border: 1px solid #333;
-	border-radius: 4px;
+	/* Use transparent background to inherit from the notebook environment.
+	   The canvas inside will render with its own background. */
+	background-color: transparent;
+	border: 1px solid var(--jp-border-color1, var(--vscode-panel-border, #333));
 	overflow: hidden;
 }

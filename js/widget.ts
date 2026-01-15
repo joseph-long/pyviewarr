@@ -23,6 +23,40 @@ function generateUUID(): string {
 	});
 }
 
+/**
+ * Wait for an element to be connected to the document DOM.
+ * Returns immediately if already connected.
+ */
+function waitForDOMConnection(element: HTMLElement): Promise<void> {
+	return new Promise((resolve) => {
+		if (element.isConnected) {
+			resolve();
+			return;
+		}
+
+		// Use MutationObserver to detect when the element is added to the DOM
+		const observer = new MutationObserver(() => {
+			if (element.isConnected) {
+				observer.disconnect();
+				resolve();
+			}
+		});
+
+		// Observe the document body for subtree additions
+		observer.observe(document.body, { childList: true, subtree: true });
+
+		// Also use requestAnimationFrame as a fallback for the next frame
+		requestAnimationFrame(function checkConnection() {
+			if (element.isConnected) {
+				observer.disconnect();
+				resolve();
+			} else {
+				requestAnimationFrame(checkConnection);
+			}
+		});
+	});
+}
+
 function render({ model, el }: RenderProps<WidgetModel>) {
 	const viewerId = `pyviewarr-${generateUUID()}`;
 
@@ -37,12 +71,13 @@ function render({ model, el }: RenderProps<WidgetModel>) {
 	el.appendChild(container);
 
 	let viewerReady = false;
+	let isDisposed = false;
 
 	/**
 	 * Update the image data in the viewer.
 	 */
 	function updateImage(): void {
-		if (!viewerReady) return;
+		if (!viewerReady || isDisposed) return;
 
 		const dataView = model.get("data");
 		const imageWidth = model.get("image_width");
@@ -63,18 +98,28 @@ function render({ model, el }: RenderProps<WidgetModel>) {
 	 * Update the widget container dimensions.
 	 */
 	function updateDimensions(): void {
+		if (isDisposed) return;
 		container.style.width = `${model.get("widget_width")}px`;
 		container.style.height = `${model.get("widget_height")}px`;
 	}
 
-	// Initialize the viewer
-	createViewer(viewerId)
+	// Wait for the container to be in the DOM before initializing the viewer.
+	// This is necessary because createViewer uses document.getElementById(),
+	// which only works for elements attached to the document.
+	waitForDOMConnection(container)
 		.then(() => {
+			if (isDisposed) return;
+			return createViewer(viewerId);
+		})
+		.then(() => {
+			if (isDisposed) return;
 			viewerReady = true;
 			updateImage();
 		})
 		.catch((err) => {
-			console.error("Failed to create viewarr viewer:", err);
+			if (!isDisposed) {
+				console.error("Failed to create viewarr viewer:", err);
+			}
 		});
 
 	// Listen for data changes from Python
@@ -89,7 +134,10 @@ function render({ model, el }: RenderProps<WidgetModel>) {
 
 	// Cleanup when widget is removed
 	return () => {
-		destroyViewer(viewerId);
+		isDisposed = true;
+		if (viewerReady) {
+			destroyViewer(viewerId);
+		}
 	};
 }
 
