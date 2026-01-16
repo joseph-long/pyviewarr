@@ -7,4 +7,7 @@ dist
 __pycache__
 .ipynb_checkpoints
 
+# Built files
 src/pyviewarr/static
+viewarr/target
+viewarr/pkg

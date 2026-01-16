@@ -57,24 +57,66 @@ class Widget(anywidget.AnyWidget):
     widget_width = traitlets.Int(800).tag(sync=True)
     widget_height = traitlets.Int(600).tag(sync=True)
 
+    # Array shape (list of dimensions)
+    shape = traitlets.List(traitlets.Int()).tag(sync=True)
+
+    # Current slice indices for leading axes (empty for 2D arrays)
+    current_slice_indices = traitlets.List(traitlets.Int()).tag(sync=True)
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._array = None
+        self.observe(self._on_slice_indices_changed, names=['current_slice_indices'])
+
+    def _on_slice_indices_changed(self, change):
+        """Update the displayed slice when slice indices change."""
+        self._update_slice()
+
+    def _update_slice(self):
+        """Compute the current 2D slice and update traits."""
+        if self._array is None:
+            return
+
+        arr = self._array
+        indices = self.current_slice_indices
+
+        # Slice the array: leading axes use indices, last two are full slices
+        if len(indices) > 0:
+            slice_obj = tuple(indices) + (slice(None), slice(None))
+            slice_arr = arr[slice_obj]
+        else:
+            slice_arr = arr
+
+        # Ensure slice is contiguous and little-endian
+        slice_arr = np.ascontiguousarray(slice_arr)
+        slice_arr = slice_arr.astype(slice_arr.dtype.newbyteorder('<'))
+
+        self.dtype = _numpy_dtype_to_viewarr(slice_arr.dtype)
+        self.image_height, self.image_width = slice_arr.shape
+        self.data = slice_arr.tobytes()
+
     def set_array(self, arr: np.ndarray) -> None:
         """Set the array data to display.
 
         Args:
-            arr: A 2D numpy array to display.
+            arr: A numpy array to display. Last two axes are treated as (y, x).
+                 Leading axes can be navigated with slice controls.
         """
-        if arr.ndim != 2:
-            raise ValueError(f"Expected 2D array, got {arr.ndim}D")
+        if arr.ndim < 2:
+            raise ValueError(f"Expected array with at least 2 dimensions, got {arr.ndim}D")
 
-        # Ensure array is contiguous in memory
-        arr = np.ascontiguousarray(arr)
+        # Store the full array
+        self._array = arr
 
-        # Ensure array is in little-endian byte order
-        arr = arr.astype(arr.dtype.newbyteorder('<'))
+        # Set shape
+        self.shape = list(arr.shape)
 
-        self.dtype = _numpy_dtype_to_viewarr(arr.dtype)
-        self.image_height, self.image_width = arr.shape
-        self.data = arr.tobytes()
+        # Initialize slice indices for leading axes
+        num_leading_axes = arr.ndim - 2
+        self.current_slice_indices = [0] * num_leading_axes
+
+        # Update the displayed slice
+        self._update_slice()
 
 
 def show(
@@ -82,10 +124,11 @@ def show(
     width: Optional[int] = None,
     height: Optional[int] = None,
 ) -> Widget:
-    """Display a 2D numpy array in an interactive viewer.
+    """Display a numpy array in an interactive viewer.
 
     Args:
-        arr: A 2D numpy array to display.
+        arr: A numpy array to display. Last two axes are treated as (y, x).
+             Leading axes can be navigated with slice controls.
         width: Widget width in pixels (default: 800).
         height: Widget height in pixels (default: 600).
 
