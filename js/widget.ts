@@ -7,6 +7,7 @@ interface WidgetModel {
 	data: DataView;
 	image_width: number;
 	image_height: number;
+	_needs_repaint: Boolean;
 	dtype: string;
 	widget_width: number;
 	widget_height: number;
@@ -86,6 +87,9 @@ function render({ model, el }: RenderProps<WidgetModel>) {
 	function updateImage(): void {
 		if (!viewerReady || isDisposed) return;
 
+		const _needsRepaint = model.get("_needs_repaint");
+		if (!_needsRepaint) return;
+		model.set("_needs_repaint", false);
 		const dataView = model.get("data");
 		const imageWidth = model.get("image_width");
 		const imageHeight = model.get("image_height");
