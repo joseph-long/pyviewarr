@@ -69,6 +69,9 @@ class Widget(anywidget.AnyWidget):
         # Ensure array is contiguous in memory
         arr = np.ascontiguousarray(arr)
 
+        # Ensure array is in little-endian byte order
+        arr = arr.astype(arr.dtype.newbyteorder('<'))
+
         self.dtype = _numpy_dtype_to_viewarr(arr.dtype)
         self.image_height, self.image_width = arr.shape
         self.data = arr.tobytes()
