@@ -23,18 +23,6 @@ declare module "viewarr" {
 	): void;
 
 	/**
-	 * Notify a viewer that its container has been resized.
-	 * @param containerId - The ID of the container (viewer instance).
-	 * @param width - New width in pixels.
-	 * @param height - New height in pixels.
-	 */
-	export function notifyResize(
-		containerId: string,
-		width: number,
-		height: number
-	): void;
-
-	/**
 	 * Destroy a viewer instance and clean up resources.
 	 * @param containerId - The ID of the container (viewer instance).
 	 */

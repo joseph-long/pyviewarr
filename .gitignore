@@ -2,6 +2,7 @@ node_modules
 .venv
 dist
 .DS_Store
+.agent-context
 
 # Python
 __pycache__

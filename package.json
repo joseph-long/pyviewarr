@@ -1,7 +1,9 @@
 {
 	"scripts": {
 		"build:deps": "cd viewarr && npm run build",
+		"build:deps:dev": "cd viewarr && npm run build:dev",
 		"build:all": "npm run build:deps && npm run build",
+		"build:dev": "npm run build:deps:dev && npm run build",
 		"dev": "node build.mjs --dev --watch",
 		"build": "node build.mjs",
 		"typecheck": "tsc --noEmit"
