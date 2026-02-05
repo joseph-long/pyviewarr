@@ -1,5 +1,23 @@
 import type { RenderProps } from "@anywidget/types";
-import { createViewer, setImageData, destroyViewer } from "viewarr";
+import {
+	createViewer,
+	setImageData,
+	destroyViewer,
+	getContrast,
+	setContrast,
+	getBias,
+	setBias,
+	getStretchMode,
+	setStretchMode,
+	getViewBounds,
+	setViewBounds,
+	getColormap,
+	getColormapReversed,
+	getValueRange,
+	onStateChange,
+	clearCallbacks,
+	type ViewerState
+} from "viewarr";
 import "./widget.css";
 
 /* Specifies attributes defined with traitlets in ../src/pyviewarr/__init__.py */
@@ -13,6 +31,17 @@ interface WidgetModel {
 	widget_height: number;
 	shape: number[];
 	current_slice_indices: number[];
+	// Viewer state properties (bidirectional sync)
+	contrast: number;
+	bias: number;
+	stretch_mode: string;
+	xlim: [number, number];
+	ylim: [number, number];
+	colormap: string;
+	colormap_reversed: boolean;
+	vmin: number;
+	vmax: number;
+	_sync_from_viewer: boolean;
 }
 
 /**
@@ -80,6 +109,130 @@ function render({ model, el }: RenderProps<WidgetModel>) {
 
 	let viewerReady = false;
 	let isDisposed = false;
+	let updatingFromViewer = false;  // Guard against feedback loops
+
+	/**
+	 * Handle state change callback from the Rust viewer.
+	 * This is called by the viewer whenever its state changes (zoom, pan, contrast, etc.)
+	 */
+	function handleViewerStateChange(state: ViewerState): void {
+		if (!viewerReady || isDisposed || updatingFromViewer) return;
+
+		// Set guard to prevent model changes from triggering viewer updates
+		updatingFromViewer = true;
+
+		try {
+			let changed = false;
+
+			if (Math.abs(model.get("contrast") - state.contrast) > 0.001) {
+				model.set("contrast", state.contrast);
+				changed = true;
+			}
+			if (Math.abs(model.get("bias") - state.bias) > 0.001) {
+				model.set("bias", state.bias);
+				changed = true;
+			}
+			if (model.get("stretch_mode") !== state.stretchMode) {
+				model.set("stretch_mode", state.stretchMode);
+				changed = true;
+			}
+
+			if (state.xlim && state.ylim) {
+				const currentXlim = model.get("xlim") as [number, number];
+				const currentYlim = model.get("ylim") as [number, number];
+				if (
+					Math.abs(currentXlim[0] - state.xlim[0]) > 0.5 ||
+					Math.abs(currentXlim[1] - state.xlim[1]) > 0.5
+				) {
+					model.set("xlim", [state.xlim[0], state.xlim[1]] as [number, number]);
+					changed = true;
+				}
+				if (
+					Math.abs(currentYlim[0] - state.ylim[0]) > 0.5 ||
+					Math.abs(currentYlim[1] - state.ylim[1]) > 0.5
+				) {
+					model.set("ylim", [state.ylim[0], state.ylim[1]] as [number, number]);
+					changed = true;
+				}
+			}
+
+			if (model.get("colormap") !== state.colormap) {
+				model.set("colormap", state.colormap);
+				changed = true;
+			}
+			if (model.get("colormap_reversed") !== state.colormapReversed) {
+				model.set("colormap_reversed", state.colormapReversed);
+				changed = true;
+			}
+			if (Math.abs(model.get("vmin") - state.vmin) > 1e-10) {
+				model.set("vmin", state.vmin);
+				changed = true;
+			}
+			if (Math.abs(model.get("vmax") - state.vmax) > 1e-10) {
+				model.set("vmax", state.vmax);
+				changed = true;
+			}
+
+			if (changed) {
+				model.set("_sync_from_viewer", true);
+				model.save_changes();
+			}
+		} finally {
+			updatingFromViewer = false;
+		}
+	}
+
+	/**
+	 * Perform an initial sync from viewer to model to capture default values.
+	 */
+	function initialSyncViewerToModel(): void {
+		if (!viewerReady || isDisposed) return;
+
+		try {
+			const contrast = getContrast(viewerId);
+			const bias = getBias(viewerId);
+			const stretchMode = getStretchMode(viewerId);
+			const bounds = getViewBounds(viewerId);
+			const colormap = getColormap(viewerId);
+			const colormapReversed = getColormapReversed(viewerId);
+			const valueRange = getValueRange(viewerId);
+
+			model.set("contrast", contrast);
+			model.set("bias", bias);
+			model.set("stretch_mode", stretchMode);
+			model.set("xlim", [bounds[0], bounds[1]] as [number, number]);
+			model.set("ylim", [bounds[2], bounds[3]] as [number, number]);
+			model.set("colormap", colormap);
+			model.set("colormap_reversed", colormapReversed);
+			model.set("vmin", valueRange[0]);
+			model.set("vmax", valueRange[1]);
+			model.set("_sync_from_viewer", true);
+			model.save_changes();
+		} catch (e) {
+			// Viewer may not be ready yet
+		}
+	}
+
+	/**
+	 * Apply model values to the viewer (Python -> viewer sync).
+	 */
+	function applyModelToViewer(): void {
+		if (!viewerReady || isDisposed) return;
+
+		try {
+			setContrast(viewerId, model.get("contrast"));
+			setBias(viewerId, model.get("bias"));
+			setStretchMode(viewerId, model.get("stretch_mode"));
+
+			const xlim = model.get("xlim") as [number, number];
+			const ylim = model.get("ylim") as [number, number];
+			if (xlim[0] !== xlim[1] && ylim[0] !== ylim[1]) {
+				setViewBounds(viewerId, xlim[0], xlim[1], ylim[0], ylim[1]);
+			}
+		} catch (e) {
+			// Viewer may not be ready yet
+		}
+	}
 
 	/**
 	 * Update the image data in the viewer.
@@ -202,7 +355,11 @@ function render({ model, el }: RenderProps<WidgetModel>) {
 		.then(() => {
 			if (isDisposed) return;
 			viewerReady = true;
+			// Register callback for state changes from the viewer
+			onStateChange(viewerId, handleViewerStateChange);
 			updateImage();
+			// Initial sync from viewer to get default values
+			initialSyncViewerToModel();
 		})
 		.catch((err) => {
 			if (!isDisposed) {
@@ -227,10 +384,27 @@ function render({ model, el }: RenderProps<WidgetModel>) {
 	model.on("change:shape", renderControls);
 	model.on("change:current_slice_indices", renderControls);
 
+	// Listen for viewer property changes from Python (only apply if not triggered by viewer sync)
+	function handlePropertyChange(): void {
+		// Skip if this change came from the viewer callback (prevents feedback loop)
+		if (updatingFromViewer || model.get("_sync_from_viewer")) {
+			model.set("_sync_from_viewer", false);
+			return;
+		}
+		applyModelToViewer();
+	}
+
+	model.on("change:contrast", handlePropertyChange);
+	model.on("change:bias", handlePropertyChange);
+	model.on("change:stretch_mode", handlePropertyChange);
+	model.on("change:xlim", handlePropertyChange);
+	model.on("change:ylim", handlePropertyChange);
+
 	// Cleanup when widget is removed
 	return () => {
 		isDisposed = true;
 		if (viewerReady) {
+			clearCallbacks(viewerId);
 			destroyViewer(viewerId);
 		}
 	};
