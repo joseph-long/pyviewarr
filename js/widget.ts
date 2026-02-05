@@ -14,6 +14,12 @@ import {
 	getColormap,
 	getColormapReversed,
 	getValueRange,
+	getRotation,
+	setRotation,
+	getPivotPoint,
+	setPivotPoint,
+	getShowPivotMarker,
+	setShowPivotMarker,
 	onStateChange,
 	clearCallbacks,
 	type ViewerState
@@ -41,6 +47,9 @@ interface WidgetModel {
 	colormap_reversed: boolean;
 	vmin: number;
 	vmax: number;
+	rotation: number;
+	pivot: [number, number];
+	show_pivot_marker: boolean;
 	_sync_from_viewer: boolean;
 }
 
@@ -173,6 +182,26 @@ function render({ model, el }: RenderProps<WidgetModel>) {
 				changed = true;
 			}
 
+			// Rotation state
+			if (Math.abs(model.get("rotation") - state.rotation) > 0.01) {
+				model.set("rotation", state.rotation);
+				changed = true;
+			}
+			if (state.pivot) {
+				const currentPivot = model.get("pivot") as [number, number];
+				if (
+					Math.abs(currentPivot[0] - state.pivot[0]) > 0.01 ||
+					Math.abs(currentPivot[1] - state.pivot[1]) > 0.01
+				) {
+					model.set("pivot", [state.pivot[0], state.pivot[1]] as [number, number]);
+					changed = true;
+				}
+			}
+			if (model.get("show_pivot_marker") !== state.showPivotMarker) {
+				model.set("show_pivot_marker", state.showPivotMarker);
+				changed = true;
+			}
+
 			if (changed) {
 				model.set("_sync_from_viewer", true);
 				model.save_changes();
@@ -196,6 +225,9 @@ function render({ model, el }: RenderProps<WidgetModel>) {
 			const colormap = getColormap(viewerId);
 			const colormapReversed = getColormapReversed(viewerId);
 			const valueRange = getValueRange(viewerId);
+			const rotation = getRotation(viewerId);
+			const pivot = getPivotPoint(viewerId);
+			const showPivotMarker = getShowPivotMarker(viewerId);
 
 			model.set("contrast", contrast);
 			model.set("bias", bias);
@@ -206,6 +238,9 @@ function render({ model, el }: RenderProps<WidgetModel>) {
 			model.set("colormap_reversed", colormapReversed);
 			model.set("vmin", valueRange[0]);
 			model.set("vmax", valueRange[1]);
+			model.set("rotation", rotation);
+			model.set("pivot", [pivot[0], pivot[1]] as [number, number]);
+			model.set("show_pivot_marker", showPivotMarker);
 			model.set("_sync_from_viewer", true);
 			model.save_changes();
 		} catch (e) {
@@ -229,6 +264,12 @@ function render({ model, el }: RenderProps<WidgetModel>) {
 			if (xlim[0] !== xlim[1] && ylim[0] !== ylim[1]) {
 				setViewBounds(viewerId, xlim[0], xlim[1], ylim[0], ylim[1]);
 			}
+
+			// Rotation state
+			setRotation(viewerId, model.get("rotation"));
+			const pivot = model.get("pivot") as [number, number];
+			setPivotPoint(viewerId, pivot[0], pivot[1]);
+			setShowPivotMarker(viewerId, model.get("show_pivot_marker"));
 		} catch (e) {
 			// Viewer may not be ready yet
 		}
@@ -399,6 +440,9 @@ function render({ model, el }: RenderProps<WidgetModel>) {
 	model.on("change:stretch_mode", handlePropertyChange);
 	model.on("change:xlim", handlePropertyChange);
 	model.on("change:ylim", handlePropertyChange);
+	model.on("change:rotation", handlePropertyChange);
+	model.on("change:pivot", handlePropertyChange);
+	model.on("change:show_pivot_marker", handlePropertyChange);
 
 	// Cleanup when widget is removed
 	return () => {

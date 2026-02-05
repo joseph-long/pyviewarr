@@ -290,6 +290,19 @@ class Widget(anywidget.AnyWidget):
     vmin = traitlets.Float(0.0).tag(sync=True)
     vmax = traitlets.Float(1.0).tag(sync=True)
 
+    # =========================================================================
+    # Rotation state properties (bidirectional sync with frontend)
+    # =========================================================================
+
+    # Rotation angle in degrees (counter-clockwise, math convention)
+    rotation = traitlets.Float(0.0).tag(sync=True)
+
+    # Pivot point in image coordinates (default is center)
+    pivot = traitlets.Tuple(traitlets.Float(), traitlets.Float(), default_value=(0.0, 0.0)).tag(sync=True)
+
+    # Whether to show the pivot marker
+    show_pivot_marker = traitlets.Bool(False).tag(sync=True)
+
     # Internal flag to prevent feedback loops during sync
     _sync_from_viewer = traitlets.Bool(False).tag(sync=True)
 
@@ -395,8 +408,8 @@ class Widget(anywidget.AnyWidget):
         """Plot the current view to a matplotlib axes.
 
         Renders the current 2D slice with the same normalization settings
-        (contrast, bias, stretch) that are currently applied in the interactive
-        viewer. Sets xlim/ylim to match the current viewport.
+        (contrast, bias, stretch) and rotation that are currently applied in
+        the interactive viewer. Sets xlim/ylim to match the current viewport.
 
         Parameters
         ----------
@@ -419,6 +432,8 @@ class Widget(anywidget.AnyWidget):
         >>> widget.plot_to_matplotlib(ax)
         >>> plt.show()
         """
+        from matplotlib.transforms import Affine2D
+
         # Get the current slice data
         data = self.get_current_slice()
 
@@ -443,16 +458,53 @@ class Widget(anywidget.AnyWidget):
         }
         imshow_defaults.update(imshow_kwargs)
 
+        # Create rotation transform around pivot point
+        # Note: Matplotlib rotates clockwise for positive angles, but viewarr
+        # uses CCW (math convention), so we negate the angle
+        rotation_deg = self.rotation
+        pivot_x, pivot_y = self.pivot
+
+        if abs(rotation_deg) > 0.01:
+            # Build affine transform: rotate around pivot point
+            # The transform is applied to data coordinates before rendering
+            rotation_transform = (
+                Affine2D()
+                .rotate_deg_around(pivot_x, pivot_y, -rotation_deg)
+                + ax.transData
+            )
+            imshow_defaults['transform'] = rotation_transform
+
         # Plot the image
         ax.imshow(data, norm=norm, cmap=cmap, **imshow_defaults)
 
-        # Set viewport limits if they've been set (non-zero)
+        # Set viewport limits
+        # For rotated images, expand limits to show full image without clipping corners
         xlim = self.xlim
         ylim = self.ylim
-        if xlim[0] != xlim[1]:
-            ax.set_xlim(xlim)
-        if ylim[0] != ylim[1]:
-            ax.set_ylim(ylim)
+        
+        if abs(rotation_deg) > 0.01:
+            # Calculate expanded bounds for rotated image
+            import math
+            h, w = data.shape[:2]
+            angle_rad = math.radians(rotation_deg)
+            cos_a, sin_a = abs(math.cos(angle_rad)), abs(math.sin(angle_rad))
+            
+            # Rotated bounding box size
+            rot_w = w * cos_a + h * sin_a
+            rot_h = w * sin_a + h * cos_a
+            
+            # Center of image
+            cx, cy = w / 2, h / 2
+            
+            # Expanded limits centered on image center
+            ax.set_xlim(cx - rot_w / 2, cx + rot_w / 2)
+            ax.set_ylim(cy - rot_h / 2, cy + rot_h / 2)
+        else:
+            # No rotation - use viewport limits if set
+            if xlim[0] != xlim[1]:
+                ax.set_xlim(xlim)
+            if ylim[0] != ylim[1]:
+                ax.set_ylim(ylim)
 
         return ax
 
