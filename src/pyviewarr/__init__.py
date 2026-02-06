@@ -478,27 +478,19 @@ class Widget(anywidget.AnyWidget):
         ax.imshow(data, norm=norm, cmap=cmap, **imshow_defaults)
 
         # Set viewport limits
-        # For rotated images, expand limits to show full image without clipping corners
         xlim = self.xlim
         ylim = self.ylim
         
         if abs(rotation_deg) > 0.01:
-            # Calculate expanded bounds for rotated image
-            import math
-            h, w = data.shape[:2]
-            angle_rad = math.radians(rotation_deg)
-            cos_a, sin_a = abs(math.cos(angle_rad)), abs(math.sin(angle_rad))
+            # Use viewport limits even when rotated
+            if xlim[0] != xlim[1]:
+                ax.set_xlim(xlim)
+            if ylim[0] != ylim[1]:
+                ax.set_ylim(ylim)
             
-            # Rotated bounding box size
-            rot_w = w * cos_a + h * sin_a
-            rot_h = w * sin_a + h * cos_a
-            
-            # Center of image
-            cx, cy = w / 2, h / 2
-            
-            # Expanded limits centered on image center
-            ax.set_xlim(cx - rot_w / 2, cx + rot_w / 2)
-            ax.set_ylim(cy - rot_h / 2, cy + rot_h / 2)
+            # Hide tick labels when rotated since pixel coordinates become meaningless
+            ax.set_xticklabels([])
+            ax.set_yticklabels([])
         else:
             # No rotation - use viewport limits if set
             if xlim[0] != xlim[1]:
