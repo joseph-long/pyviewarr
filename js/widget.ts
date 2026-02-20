@@ -31,7 +31,7 @@ interface WidgetModel {
 	data: DataView;
 	image_width: number;
 	image_height: number;
-	_needs_repaint: Boolean;
+	_image_update_token: number;
 	dtype: string;
 	widget_width: number;
 	widget_height: number;
@@ -119,6 +119,7 @@ function render({ model, el }: RenderProps<WidgetModel>) {
 	let viewerReady = false;
 	let isDisposed = false;
 	let updatingFromViewer = false;  // Guard against feedback loops
+	let lastAppliedImageToken = -1;
 
 	/**
 	 * Handle state change callback from the Rust viewer.
@@ -281,9 +282,8 @@ function render({ model, el }: RenderProps<WidgetModel>) {
 	function updateImage(): void {
 		if (!viewerReady || isDisposed) return;
 
-		const _needsRepaint = model.get("_needs_repaint");
-		if (!_needsRepaint) return;
-		model.set("_needs_repaint", false);
+		const imageUpdateToken = model.get("_image_update_token");
+		if (imageUpdateToken === lastAppliedImageToken) return;
 		const dataView = model.get("data");
 		const imageWidth = model.get("image_width");
 		const imageHeight = model.get("image_height");
@@ -296,6 +296,7 @@ function render({ model, el }: RenderProps<WidgetModel>) {
 				dataView.byteOffset + dataView.byteLength
 			) as ArrayBuffer;
 			setImageData(viewerId, buffer, imageWidth, imageHeight, dtype);
+			lastAppliedImageToken = imageUpdateToken;
 		}
 	}
 
@@ -357,6 +358,7 @@ function render({ model, el }: RenderProps<WidgetModel>) {
 				const target = e.currentTarget as HTMLElement;
 				const axis = parseInt(target.dataset.axis || '0', 10);
 				const direction = target.dataset.direction;
+				console.debug(e, `navigate ${axis} ${direction}`);
 				navigateSlice(axis, direction === 'next' ? 1 : -1);
 			});
 		});
@@ -416,6 +418,7 @@ function render({ model, el }: RenderProps<WidgetModel>) {
 	model.on("change:image_width", updateImage);
 	model.on("change:image_height", updateImage);
 	model.on("change:dtype", updateImage);
+	model.on("change:_image_update_token", updateImage);
 
 	// Listen for widget dimension changes
 	model.on("change:widget_width", updateDimensions);

@@ -244,11 +244,9 @@ class Widget(anywidget.AnyWidget):
     image_width = traitlets.Int(0).tag(sync=True)
     image_height = traitlets.Int(0).tag(sync=True)
 
-    # Whether the frontend needs to update its viewer state
-    # (used to prevent errors from the fact that different
-    # traitlets update independently, leading to temporary buffer / shape
-    # mismatches while the changes apply)
-    _needs_repaint = traitlets.Bool(True).tag(sync=True)
+    # Monotonic token that increments whenever image payload traits are updated.
+    # Frontend applies setImageData when it observes a new token value.
+    _image_update_token = traitlets.Int(0).tag(sync=True)
 
     # Data type string for viewarr (e.g., "f32", "u16")
     dtype = traitlets.Unicode("f64").tag(sync=True)
@@ -337,7 +335,7 @@ class Widget(anywidget.AnyWidget):
         self.dtype = _numpy_dtype_to_viewarr(slice_arr.dtype)
         self.image_height, self.image_width = slice_arr.shape
         self.data = slice_arr.tobytes()
-        self._needs_repaint = True
+        self._image_update_token += 1
 
     def set_array(self, arr: np.ndarray) -> None:
         """Set the array data to display.
