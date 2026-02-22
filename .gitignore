@@ -12,3 +12,6 @@ __pycache__
 src/pyviewarr/static
 viewarr/target
 viewarr/pkg
+
+# playwright test artifacts
+test-results/
