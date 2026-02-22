@@ -222,6 +222,7 @@ class TestWidget:
         assert widget.stretch_mode == "linear"
         assert widget.xlim == (0.0, 0.0)
         assert widget.ylim == (0.0, 0.0)
+        assert widget.overlay_message == ""
 
     def test_set_array_2d(self):
         """set_array should work with 2D arrays."""
@@ -338,11 +339,11 @@ class TestWidget:
 
         config = ViewerConfig(
             on_shift_click=on_shift_click,
-            shift_click_overlay_message="Shift-click stores points",
+            overlay_message="Shift-click stores points",
         )
         widget = ViewArrWidget(viewer_config=config)
 
-        assert widget.shift_click_overlay_message == "Shift-click stores points"
+        assert widget.overlay_message == "Shift-click stores points"
         widget._shift_click_event = {"x": 12.25, "y": 4.75, "token": 1}
         assert clicks == [(12.25, 4.75)]
 
@@ -351,13 +352,13 @@ class TestWidget:
         config = ViewerConfig(
             zoom=2.0,
             on_shift_click=lambda x, y: None,
-            shift_click_overlay_message="Shift-click callback active",
+            overlay_message="Shift-click callback active",
         )
         js_state = config.to_js_dict()
 
         assert js_state["zoom"] == 2.0
         assert "on_shift_click" not in js_state
-        assert "shift_click_overlay_message" not in js_state
+        assert "overlay_message" not in js_state
 
 
 class TestWidgetMatplotlib:

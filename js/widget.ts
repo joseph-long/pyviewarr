@@ -23,7 +23,7 @@ import {
 	setPivotPoint,
 	getShowPivotMarker,
 	setShowPivotMarker,
-	setShiftClickOverlayMessage,
+	setOverlayMessage,
 	onStateChange,
 	onClick,
 	clearCallbacks,
@@ -46,7 +46,7 @@ interface WidgetModel {
 	shape: number[];
 	current_slice_indices: number[];
 	viewer_config: ViewerStateConfig;
-	shift_click_overlay_message: string;
+	overlay_message: string;
 	_shift_click_event: { x: number; y: number; token: number } | Record<string, never>;
 	// Viewer state properties (bidirectional sync)
 	contrast: number;
@@ -306,7 +306,7 @@ function render({ model, el }: RenderProps<WidgetModel>) {
 			const pivot = model.get("pivot") as [number, number];
 			setPivotPoint(viewerId, pivot[0], pivot[1]);
 			setShowPivotMarker(viewerId, model.get("show_pivot_marker"));
-			setShiftClickOverlayMessage(viewerId, model.get("shift_click_overlay_message"));
+			setOverlayMessage(viewerId, model.get("overlay_message"));
 		} catch (e) {
 			// Viewer may not be ready yet
 		}
@@ -500,7 +500,7 @@ function render({ model, el }: RenderProps<WidgetModel>) {
 	model.on("change:rotation", handlePropertyChange);
 	model.on("change:pivot", handlePropertyChange);
 	model.on("change:show_pivot_marker", handlePropertyChange);
-	model.on("change:shift_click_overlay_message", handlePropertyChange);
+	model.on("change:overlay_message", handlePropertyChange);
 
 	// Cleanup when widget is removed
 	return () => {

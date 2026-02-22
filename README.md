@@ -94,6 +94,7 @@ Use the left and right arrow buttons to rotate in 15º increments, or enter a nu
 By default, rotation is about the image center, but you can set a pivot point by Cmd/Ctrl-Shift-clicking the desired point.
 
 Shift-clicking on the image calls an optional Python callback with continuous data-space coordinates (`x`, `y` including fractional pixel position).
+Overlay help text is optional and only shown when you provide `overlay_message`.
 
 ### Matplotlib integration
 
@@ -129,7 +130,7 @@ pyviewarr.show(x, vmin=-10, vmax=10)
 See [example](./preconfigured_state_example.ipynb).
 See also [shift-click callback demo](./notebooks/shift_click_callback_demo.ipynb).
 
-You can register a callback and customize the overlay hint:
+You can register a callback and set an optional overlay hint:
 
 ```python
 points = []
@@ -140,7 +141,7 @@ def mark_point(x, y):
 
 cfg = pyviewarr.ViewerConfig(
     on_shift_click=mark_point,
-    shift_click_overlay_message="Shift-click to add a point"
+    overlay_message="Shift-click to add a point"
 )
 widget = pyviewarr.show(x, viewer_config=cfg)
 ```
@@ -260,19 +261,22 @@ GitHub releases are automatically pushed to PyPI by the workflow in [`.github/wo
 #### pyviewarr changes
 
 - Added `ViewerConfig.on_shift_click` Python callback to receive shift-click coordinates in data space (`x`, `y`) with fractional precision.
-- Added `ViewerConfig.shift_click_overlay_message` to customize shift-click hint text.
-- Added default shift-click overlay hint text: "Shift-click to mark points".
+- Refactored overlay text to generic `ViewerConfig.overlay_message` (not callback-specific).
+- Removed default overlay text; overlay is now hidden unless `overlay_message` is provided.
 - Added tests covering shift-click callback wiring and `ViewerConfig` JS serialization exclusions for Python-only fields.
 - Added a demonstration notebook: [`notebooks/shift_click_callback_demo.ipynb`](./notebooks/shift_click_callback_demo.ipynb).
+- Updated notebook callback logging example to use `ipywidgets.Output` for reliable async callback output display.
 - Updated usage docs with shift-click callback example and notebook link.
 - Updated bundled `viewarr` submodule to include shift-click callback and overlay layout improvements.
 
 #### Included `viewarr` changes
 
 - Added shift-click callback events via `onClick(...)` with continuous (fractional) data-space coordinates.
-- Added shift-click hint overlay message APIs: `getShiftClickOverlayMessage(...)` and `setShiftClickOverlayMessage(...)`.
-- Added `shiftClickOverlayMessage` support to `setViewerState(...)`.
-- Updated shift-click hint placement to compute a live safe area between bottom overlays, avoiding overlap with hover coordinates and zoom controls while keeping the hint centered in that gap.
+- Added generic overlay message APIs: `getOverlayMessage(...)` and `setOverlayMessage(...)`.
+- Added `overlayMessage` support to `setViewerState(...)`.
+- Renamed overlay API from shift-click-specific names to generic names (`getOverlayMessage`/`setOverlayMessage`, `overlayMessage` in state config).
+- Removed default overlay text; overlay only renders when message text is supplied.
+- Updated overlay placement to compute a live safe area between bottom overlays, avoiding overlap with hover coordinates and zoom controls while keeping the message centered in that gap.
 
 ### `v0.3.2`
 

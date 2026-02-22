@@ -265,13 +265,13 @@ class ViewerConfig:
     pivot: Optional[Tuple[float, float]] = None
     show_pivot_marker: Optional[bool] = None
     on_shift_click: Optional[ShiftClickCallback] = None
-    shift_click_overlay_message: Optional[str] = None
+    overlay_message: Optional[str] = None
 
     def to_js_dict(self) -> Dict[str, Any]:
         """Convert config to the JS object shape expected by the frontend."""
         raw = asdict(self)
         raw.pop("on_shift_click", None)
-        raw.pop("shift_click_overlay_message", None)
+        raw.pop("overlay_message", None)
         if raw.get("cmap") is not None:
             cmap = str(raw["cmap"]).strip()
             raw["cmap"] = _CMAP_CANONICAL_NAMES.get(cmap.lower(), cmap)
@@ -330,8 +330,8 @@ class ViewArrWidget(anywidget.AnyWidget):
 
     # Optional initial viewer state object (mapped to JS state keys)
     viewer_config = traitlets.Dict(default_value={}).tag(sync=True)
-    # Overlay message shown for shift-click behavior
-    shift_click_overlay_message = traitlets.Unicode("Shift-click to mark points").tag(sync=True)
+    # Optional overlay message shown at bottom-center of the viewer
+    overlay_message = traitlets.Unicode("").tag(sync=True)
     # Latest shift-click event from frontend: {"x": float, "y": float, "token": int}
     _shift_click_event = traitlets.Dict(default_value={}).tag(sync=True)
 
@@ -396,17 +396,15 @@ class ViewArrWidget(anywidget.AnyWidget):
         if viewer_config is not None:
             if isinstance(viewer_config, ViewerConfig):
                 shift_click_callback = viewer_config.on_shift_click
-                if viewer_config.shift_click_overlay_message is not None:
-                    kwargs["shift_click_overlay_message"] = (
-                        viewer_config.shift_click_overlay_message
-                    )
+                if viewer_config.overlay_message is not None:
+                    kwargs["overlay_message"] = viewer_config.overlay_message
                 kwargs["viewer_config"] = viewer_config.to_js_dict()
             else:
                 config_dict = dict(viewer_config)
                 shift_click_callback = config_dict.pop("on_shift_click", None)
-                overlay_message = config_dict.pop("shift_click_overlay_message", None)
+                overlay_message = config_dict.pop("overlay_message", None)
                 if overlay_message is not None:
-                    kwargs["shift_click_overlay_message"] = overlay_message
+                    kwargs["overlay_message"] = overlay_message
                 kwargs["viewer_config"] = ViewerConfig(**config_dict).to_js_dict()
         super().__init__(**kwargs)
         self._on_shift_click = shift_click_callback
@@ -539,7 +537,7 @@ class ViewArrWidget(anywidget.AnyWidget):
             pivot=self.pivot,
             show_pivot_marker=self.show_pivot_marker,
             on_shift_click=self._on_shift_click,
-            shift_click_overlay_message=self.shift_click_overlay_message,
+            overlay_message=self.overlay_message,
         )
 
     def plot_to_matplotlib(
