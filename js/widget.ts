@@ -24,6 +24,8 @@ import {
 	getShowPivotMarker,
 	setShowPivotMarker,
 	setOverlayMessage,
+	getMarkers,
+	setMarkers,
 	onStateChange,
 	onClick,
 	clearCallbacks,
@@ -62,6 +64,7 @@ interface WidgetModel {
 	rotation: number;
 	pivot: [number, number];
 	show_pivot_marker: boolean;
+	markers: [number, number][];
 	_sync_from_viewer: boolean;
 }
 
@@ -261,6 +264,7 @@ function render({ model, el }: RenderProps<WidgetModel>) {
 			const rotation = getRotation(viewerId);
 			const pivot = getPivotPoint(viewerId);
 			const showPivotMarker = getShowPivotMarker(viewerId);
+			const markers = getMarkers(viewerId);
 
 			model.set("contrast", contrast);
 			model.set("bias", bias);
@@ -275,6 +279,7 @@ function render({ model, el }: RenderProps<WidgetModel>) {
 			model.set("rotation", rotation);
 			model.set("pivot", [pivot[0], pivot[1]] as [number, number]);
 			model.set("show_pivot_marker", showPivotMarker);
+			model.set("markers", markers as [number, number][]);
 			model.set("_sync_from_viewer", true);
 			model.save_changes();
 		} catch (e) {
@@ -307,6 +312,7 @@ function render({ model, el }: RenderProps<WidgetModel>) {
 			setPivotPoint(viewerId, pivot[0], pivot[1]);
 			setShowPivotMarker(viewerId, model.get("show_pivot_marker"));
 			setOverlayMessage(viewerId, model.get("overlay_message"));
+			setMarkers(viewerId, model.get("markers") as [number, number][]);
 		} catch (e) {
 			// Viewer may not be ready yet
 		}
@@ -483,10 +489,13 @@ function render({ model, el }: RenderProps<WidgetModel>) {
 
 	// Listen for viewer property changes from Python (only apply if not triggered by viewer sync)
 	function handlePropertyChange(): void {
-		// Skip if this change came from the viewer callback (prevents feedback loop)
-		if (updatingFromViewer || model.get("_sync_from_viewer")) {
-			model.set("_sync_from_viewer", false);
+		// Skip direct echo while we're actively applying viewer -> model updates.
+		if (updatingFromViewer) {
 			return;
+		}
+		// Clear one-shot sync hint but still apply Python-driven updates (e.g. markers).
+		if (model.get("_sync_from_viewer")) {
+			model.set("_sync_from_viewer", false);
 		}
 		applyModelToViewer();
 	}
@@ -501,6 +510,7 @@ function render({ model, el }: RenderProps<WidgetModel>) {
 	model.on("change:pivot", handlePropertyChange);
 	model.on("change:show_pivot_marker", handlePropertyChange);
 	model.on("change:overlay_message", handlePropertyChange);
+	model.on("change:markers", handlePropertyChange);
 
 	// Cleanup when widget is removed
 	return () => {

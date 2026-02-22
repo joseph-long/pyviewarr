@@ -128,23 +128,36 @@ pyviewarr.show(x, vmin=-10, vmax=10)
 ```
 
 See [example](./preconfigured_state_example.ipynb).
-See also [shift-click callback demo](./notebooks/shift_click_callback_demo.ipynb).
 
-You can register a callback and set an optional overlay hint:
+#### Marker coordinates API
+
+Use `widget.markers` to supply marker positions as continuous image coordinates.
 
 ```python
-points = []
+widget = pyviewarr.viewarr(x)
+widget.markers = [(10.5, 20.25), (100.0, 42.0)]
+```
 
-def mark_point(x, y):
-    points.append((x, y))
-    print(f"Marked at x={x:.3f}, y={y:.3f}")
+Markers are rendered as fixed-size plus signs in screen space, and follow pan/zoom/rotation transforms.
+
+#### Shift-click callback API
+
+Use `ViewerConfig.on_shift_click` to receive continuous data-space click coordinates:
+
+```python
+def on_shift_click(x: float, y: float) -> None:
+    print(f"Shift-click at x={x:.3f}, y={y:.3f}")
 
 cfg = pyviewarr.ViewerConfig(
-    on_shift_click=mark_point,
-    overlay_message="Shift-click to add a point"
+    on_shift_click=on_shift_click,
+    overlay_message="Shift-click to report coordinates",
 )
-widget = pyviewarr.show(x, viewer_config=cfg)
+widget = pyviewarr.viewarr(x, viewer_config=cfg)
+widget
 ```
+
+For a demo that combines callbacks with marker updates, see
+[shift-click callback demo](./notebooks/shift_click_callback_demo.ipynb).
 
 #### Setting data
 

@@ -16,6 +16,7 @@ declare module "viewarr" {
 		pivot?: [number, number];
 		showPivotMarker?: boolean;
 		overlayMessage?: string;
+		markers?: [number, number][];
 	}
 
 	export interface ViewerState {
@@ -94,6 +95,11 @@ declare module "viewarr" {
 	export function setShowPivotMarker(containerId: string, show: boolean): void;
 	export function getOverlayMessage(containerId: string): string;
 	export function setOverlayMessage(containerId: string, message: string): void;
+	export function getMarkers(containerId: string): [number, number][];
+	export function setMarkers(
+		containerId: string,
+		markers: [number, number][]
+	): void;
 	export interface ClickEvent {
 		x: number;
 		y: number;

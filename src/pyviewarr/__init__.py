@@ -48,6 +48,7 @@ _CMAP_CANONICAL_NAMES = {
 }
 
 ShiftClickCallback = Callable[[float, float], None]
+MarkerPoint = Tuple[float, float]
 
 
 def _numpy_dtype_to_viewarr(dtype: np.dtype) -> str:
@@ -264,6 +265,7 @@ class ViewerConfig:
     rotation: Optional[float] = None
     pivot: Optional[Tuple[float, float]] = None
     show_pivot_marker: Optional[bool] = None
+    markers: Optional[list[MarkerPoint]] = None
     on_shift_click: Optional[ShiftClickCallback] = None
     overlay_message: Optional[str] = None
 
@@ -272,6 +274,10 @@ class ViewerConfig:
         raw = asdict(self)
         raw.pop("on_shift_click", None)
         raw.pop("overlay_message", None)
+        if raw.get("markers") is not None:
+            raw["markers"] = [
+                (float(point[0]), float(point[1])) for point in raw["markers"]
+            ]
         if raw.get("cmap") is not None:
             cmap = str(raw["cmap"]).strip()
             raw["cmap"] = _CMAP_CANONICAL_NAMES.get(cmap.lower(), cmap)
@@ -383,6 +389,10 @@ class ViewArrWidget(anywidget.AnyWidget):
 
     # Whether to show the pivot marker
     show_pivot_marker = traitlets.Bool(False).tag(sync=True)
+    # Marker list as continuous image coordinates: [(x, y), ...]
+    markers = traitlets.List(
+        traitlets.Tuple(traitlets.Float(), traitlets.Float()), default_value=[]
+    ).tag(sync=True)
 
     # Internal flag to prevent feedback loops during sync
     _sync_from_viewer = traitlets.Bool(False).tag(sync=True)
@@ -398,13 +408,20 @@ class ViewArrWidget(anywidget.AnyWidget):
                 shift_click_callback = viewer_config.on_shift_click
                 if viewer_config.overlay_message is not None:
                     kwargs["overlay_message"] = viewer_config.overlay_message
+                if viewer_config.markers is not None:
+                    kwargs["markers"] = [
+                        (float(x), float(y)) for (x, y) in viewer_config.markers
+                    ]
                 kwargs["viewer_config"] = viewer_config.to_js_dict()
             else:
                 config_dict = dict(viewer_config)
                 shift_click_callback = config_dict.pop("on_shift_click", None)
                 overlay_message = config_dict.pop("overlay_message", None)
+                markers = config_dict.get("markers")
                 if overlay_message is not None:
                     kwargs["overlay_message"] = overlay_message
+                if markers is not None:
+                    kwargs["markers"] = [(float(x), float(y)) for (x, y) in markers]
                 kwargs["viewer_config"] = ViewerConfig(**config_dict).to_js_dict()
         super().__init__(**kwargs)
         self._on_shift_click = shift_click_callback
@@ -536,6 +553,7 @@ class ViewArrWidget(anywidget.AnyWidget):
             rotation=self.rotation,
             pivot=self.pivot,
             show_pivot_marker=self.show_pivot_marker,
+            markers=self.markers,
             on_shift_click=self._on_shift_click,
             overlay_message=self.overlay_message,
         )
