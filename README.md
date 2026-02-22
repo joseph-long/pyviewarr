@@ -227,3 +227,25 @@ The test server uses `tests/e2e/jupyter_server_config.py`, which enables Galata'
 Note that `viewarr/` submodule changes will need to be committed and pushed first, then the submodule reference in this repository can be updated.
 
 GitHub releases are automatically pushed to PyPI by the workflow in [`.github/workflows/ci.yml`](./.github/workflows/ci.yml).
+
+## Changelog
+
+### Unreleased (since `v0.3.0`)
+
+#### pyviewarr changes
+
+- Added browser end-to-end testing with Playwright + JupyterLab Galata (`playwright.config.ts`, `tests/e2e/`).
+- Added CI coverage for Playwright E2E tests in [`.github/workflows/ci.yml`](./.github/workflows/ci.yml).
+- Expanded development documentation for build/test workflows.
+- Updated bundled `viewarr` submodule from `3d74f69` to `3797ee7`.
+
+#### Included `viewarr` changes
+
+- Fixed Cmd/Ctrl-click centering coordinate mapping.
+- Pinned wasm-bindgen stack to avoid `glow`/`js-sys` CI build breakages.
+- Added/expanded viewer state APIs in JS/TS:
+  - `setViewerState(...)` for partial bulk state updates.
+  - `getZoom(...)` / `setZoom(...)`.
+  - `setColormap(...)` / `setColormapReversed(...)`.
+  - New `StretchMode` and `ViewerStateConfig` typings.
+- Improved colormap name handling/parsing with canonical names and aliases (`gray`/`grayscale`/`greyscale`, etc.).
