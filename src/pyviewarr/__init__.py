@@ -2,7 +2,7 @@ import importlib.metadata
 import pathlib
 from IPython.display import display
 from dataclasses import asdict, dataclass
-from typing import Any, Dict, Literal, Optional, Tuple, TYPE_CHECKING, Union
+from typing import Any, Callable, Dict, Literal, Optional, Tuple, TYPE_CHECKING, Union
 
 import anywidget
 import numpy as np
@@ -46,6 +46,8 @@ _CMAP_CANONICAL_NAMES = {
     "rdbu": "RdBu",
     "rdylbu": "RdYlBu",
 }
+
+ShiftClickCallback = Callable[[float, float], None]
 
 
 def _numpy_dtype_to_viewarr(dtype: np.dtype) -> str:
@@ -262,10 +264,14 @@ class ViewerConfig:
     rotation: Optional[float] = None
     pivot: Optional[Tuple[float, float]] = None
     show_pivot_marker: Optional[bool] = None
+    on_shift_click: Optional[ShiftClickCallback] = None
+    shift_click_overlay_message: Optional[str] = None
 
     def to_js_dict(self) -> Dict[str, Any]:
         """Convert config to the JS object shape expected by the frontend."""
         raw = asdict(self)
+        raw.pop("on_shift_click", None)
+        raw.pop("shift_click_overlay_message", None)
         if raw.get("cmap") is not None:
             cmap = str(raw["cmap"]).strip()
             raw["cmap"] = _CMAP_CANONICAL_NAMES.get(cmap.lower(), cmap)
@@ -324,6 +330,10 @@ class ViewArrWidget(anywidget.AnyWidget):
 
     # Optional initial viewer state object (mapped to JS state keys)
     viewer_config = traitlets.Dict(default_value={}).tag(sync=True)
+    # Overlay message shown for shift-click behavior
+    shift_click_overlay_message = traitlets.Unicode("Shift-click to mark points").tag(sync=True)
+    # Latest shift-click event from frontend: {"x": float, "y": float, "token": int}
+    _shift_click_event = traitlets.Dict(default_value={}).tag(sync=True)
 
     # =========================================================================
     # Viewer state properties (bidirectional sync with frontend)
@@ -382,14 +392,45 @@ class ViewArrWidget(anywidget.AnyWidget):
         viewer_config: Optional[Union[ViewerConfig, Dict[str, Any]]] = None,
         **kwargs,
     ):
+        shift_click_callback = None
         if viewer_config is not None:
             if isinstance(viewer_config, ViewerConfig):
+                shift_click_callback = viewer_config.on_shift_click
+                if viewer_config.shift_click_overlay_message is not None:
+                    kwargs["shift_click_overlay_message"] = (
+                        viewer_config.shift_click_overlay_message
+                    )
                 kwargs["viewer_config"] = viewer_config.to_js_dict()
             else:
-                kwargs["viewer_config"] = ViewerConfig(**dict(viewer_config)).to_js_dict()
+                config_dict = dict(viewer_config)
+                shift_click_callback = config_dict.pop("on_shift_click", None)
+                overlay_message = config_dict.pop("shift_click_overlay_message", None)
+                if overlay_message is not None:
+                    kwargs["shift_click_overlay_message"] = overlay_message
+                kwargs["viewer_config"] = ViewerConfig(**config_dict).to_js_dict()
         super().__init__(**kwargs)
+        self._on_shift_click = shift_click_callback
         self._array = None
         self.observe(self._on_slice_indices_changed, names=["current_slice_indices"])
+        self.observe(self._on_shift_click_event, names=["_shift_click_event"])
+
+    def set_shift_click_callback(
+        self, callback: Optional[ShiftClickCallback]
+    ) -> None:
+        """Set or clear the Python callback invoked on shift-click events."""
+        self._on_shift_click = callback
+
+    def _on_shift_click_event(self, change):
+        callback = self._on_shift_click
+        if callback is None:
+            return
+        event = change.get("new", {})
+        if not isinstance(event, dict):
+            return
+        x = event.get("x")
+        y = event.get("y")
+        if isinstance(x, (int, float)) and isinstance(y, (int, float)):
+            callback(float(x), float(y))
 
     def _on_slice_indices_changed(self, change):
         """Update the displayed slice when slice indices change."""
@@ -497,6 +538,8 @@ class ViewArrWidget(anywidget.AnyWidget):
             rotation=self.rotation,
             pivot=self.pivot,
             show_pivot_marker=self.show_pivot_marker,
+            on_shift_click=self._on_shift_click,
+            shift_click_overlay_message=self.shift_click_overlay_message,
         )
 
     def plot_to_matplotlib(

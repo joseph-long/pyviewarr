@@ -23,9 +23,12 @@ import {
 	setPivotPoint,
 	getShowPivotMarker,
 	setShowPivotMarker,
+	setShiftClickOverlayMessage,
 	onStateChange,
+	onClick,
 	clearCallbacks,
 	type ViewerState,
+	type ClickEvent,
 	type ViewerStateConfig,
 	type StretchMode
 } from "viewarr";
@@ -43,6 +46,8 @@ interface WidgetModel {
 	shape: number[];
 	current_slice_indices: number[];
 	viewer_config: ViewerStateConfig;
+	shift_click_overlay_message: string;
+	_shift_click_event: { x: number; y: number; token: number } | Record<string, never>;
 	// Viewer state properties (bidirectional sync)
 	contrast: number;
 	bias: number;
@@ -224,6 +229,21 @@ function render({ model, el }: RenderProps<WidgetModel>) {
 	}
 
 	/**
+	 * Handle shift-click callback from the Rust viewer.
+	 * This forwards continuous data-space coordinates to Python.
+	 */
+	function handleShiftClick(event: ClickEvent): void {
+		if (!viewerReady || isDisposed) return;
+		if (typeof event.x !== "number" || typeof event.y !== "number") return;
+		model.set("_shift_click_event", {
+			x: event.x,
+			y: event.y,
+			token: Date.now()
+		});
+		model.save_changes();
+	}
+
+	/**
 	 * Perform an initial sync from viewer to model to capture default values.
 	 */
 	function initialSyncViewerToModel(): void {
@@ -286,6 +306,7 @@ function render({ model, el }: RenderProps<WidgetModel>) {
 			const pivot = model.get("pivot") as [number, number];
 			setPivotPoint(viewerId, pivot[0], pivot[1]);
 			setShowPivotMarker(viewerId, model.get("show_pivot_marker"));
+			setShiftClickOverlayMessage(viewerId, model.get("shift_click_overlay_message"));
 		} catch (e) {
 			// Viewer may not be ready yet
 		}
@@ -429,6 +450,7 @@ function render({ model, el }: RenderProps<WidgetModel>) {
 			viewerReady = true;
 			// Register callback for state changes from the viewer
 			onStateChange(viewerId, handleViewerStateChange);
+			onClick(viewerId, handleShiftClick);
 			updateImage();
 			applyInitialViewerConfig();
 			// Initial sync from viewer to get default values
@@ -478,6 +500,7 @@ function render({ model, el }: RenderProps<WidgetModel>) {
 	model.on("change:rotation", handlePropertyChange);
 	model.on("change:pivot", handlePropertyChange);
 	model.on("change:show_pivot_marker", handlePropertyChange);
+	model.on("change:shift_click_overlay_message", handlePropertyChange);
 
 	// Cleanup when widget is removed
 	return () => {

@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from pyviewarr import ViewarrNormalize, ViewArrWidget
+from pyviewarr import ViewerConfig, ViewarrNormalize, ViewArrWidget
 
 
 class TestViewarrNormalize:
@@ -328,6 +328,36 @@ class TestWidget:
             widget.set_array(data)
             assert widget.image_height == 2
             assert widget.image_width == 2
+
+    def test_viewer_config_shift_click_callback_and_overlay(self):
+        """ViewerConfig callback and overlay message should be applied to widget."""
+        clicks = []
+
+        def on_shift_click(x, y):
+            clicks.append((x, y))
+
+        config = ViewerConfig(
+            on_shift_click=on_shift_click,
+            shift_click_overlay_message="Shift-click stores points",
+        )
+        widget = ViewArrWidget(viewer_config=config)
+
+        assert widget.shift_click_overlay_message == "Shift-click stores points"
+        widget._shift_click_event = {"x": 12.25, "y": 4.75, "token": 1}
+        assert clicks == [(12.25, 4.75)]
+
+    def test_viewer_config_to_js_dict_excludes_python_only_fields(self):
+        """Python-only config fields should not be sent to JS viewer state."""
+        config = ViewerConfig(
+            zoom=2.0,
+            on_shift_click=lambda x, y: None,
+            shift_click_overlay_message="Shift-click callback active",
+        )
+        js_state = config.to_js_dict()
+
+        assert js_state["zoom"] == 2.0
+        assert "on_shift_click" not in js_state
+        assert "shift_click_overlay_message" not in js_state
 
 
 class TestWidgetMatplotlib:
