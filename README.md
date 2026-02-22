@@ -226,11 +226,32 @@ The test server uses `tests/e2e/jupyter_server_config.py`, which enables Galata'
 
 Note that `viewarr/` submodule changes will need to be committed and pushed first, then the submodule reference in this repository can be updated.
 
+Release checklist:
+
+1. Update changelog entries and set `[project].version` in `pyproject.toml` to the release version (e.g. `0.3.2`), then commit.
+2. Create the Git tag/release for that version (e.g. `v0.3.2`).
+3. Immediately after release, bump `pyproject.toml` to the next development version (e.g. `0.3.3dev`) and commit.
+
 GitHub releases are automatically pushed to PyPI by the workflow in [`.github/workflows/ci.yml`](./.github/workflows/ci.yml).
 
 ## Changelog
 
-### Unreleased (since `v0.3.0`)
+### Unreleased (since `v0.3.2`)
+
+- No unreleased changes yet.
+
+### `v0.3.2`
+
+#### pyviewarr changes
+
+- Updated bundled `viewarr` submodule from `3797ee7` to `cc78498`.
+
+#### Included `viewarr` changes
+
+- Fixed diverging/symmetric colorbar limit behavior so `vmax` is the only editable limit, coerced positive, and `vmin` is displayed as `-vmax` in that mode.
+- Fixed state callback / `getValueRange()` limit reporting in diverging/symmetric mode to reflect the effective displayed range.
+
+### `v0.3.1`
 
 #### pyviewarr changes
 
