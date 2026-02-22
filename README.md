@@ -281,6 +281,7 @@ GitHub releases are automatically pushed to PyPI by the workflow in [`.github/wo
 - Updated notebook callback logging example to use `ipywidgets.Output` for reliable async callback output display.
 - Updated usage docs with shift-click callback example and notebook link.
 - Updated bundled `viewarr` submodule to include shift-click callback and overlay layout improvements.
+- Updated bundled `viewarr` submodule to include diverging-mode colorbar limit textbox fixes.
 
 #### Included `viewarr` changes
 
@@ -288,6 +289,7 @@ GitHub releases are automatically pushed to PyPI by the workflow in [`.github/wo
 - Added generic overlay message APIs: `getOverlayMessage(...)` and `setOverlayMessage(...)`.
 - Added `overlayMessage` support to `setViewerState(...)`.
 - Renamed overlay API from shift-click-specific names to generic names (`getOverlayMessage`/`setOverlayMessage`, `overlayMessage` in state config).
+- Fixed diverging/symmetric colorbar limit editing/reporting behavior and `vmin` textbox refresh when switching back to non-symmetric modes.
 - Removed default overlay text; overlay only renders when message text is supplied.
 - Updated overlay placement to compute a live safe area between bottom overlays, avoiding overlap with hover coordinates and zoom controls while keeping the message centered in that gap.
 
