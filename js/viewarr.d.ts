@@ -1,4 +1,38 @@
 declare module "viewarr" {
+	export type StretchMode = "linear" | "log" | "symmetric";
+
+	export interface ViewerStateConfig {
+		contrast?: number;
+		bias?: number;
+		stretchMode?: StretchMode;
+		zoom?: number;
+		colormap?: string;
+		colormapReversed?: boolean;
+		vmin?: number;
+		vmax?: number;
+		xlim?: [number, number];
+		ylim?: [number, number];
+		rotation?: number;
+		pivot?: [number, number];
+		showPivotMarker?: boolean;
+	}
+
+	export interface ViewerState {
+		contrast: number;
+		bias: number;
+		stretchMode: StretchMode;
+		zoom: number;
+		colormap: string;
+		colormapReversed: boolean;
+		vmin: number;
+		vmax: number;
+		xlim?: [number, number];
+		ylim?: [number, number];
+		rotation: number;
+		pivot: [number, number];
+		showPivotMarker: boolean;
+	}
+
 	/**
 	 * Create a new viewer instance in the specified container.
 	 * @param containerId - The ID of the HTML element to use as the container.
@@ -30,8 +64,37 @@ declare module "viewarr" {
 
 	/**
 	 * Check if a viewer exists for a container.
-	 * @param containerId - The ID of the container.
-	 * @returns True if a viewer exists.
 	 */
-	export function viewerExists(containerId: string): boolean;
+	export function hasViewer(containerId: string): boolean;
+	export function getContrast(containerId: string): number;
+	export function setContrast(containerId: string, contrast: number): void;
+	export function getBias(containerId: string): number;
+	export function setBias(containerId: string, bias: number): void;
+	export function getStretchMode(containerId: string): StretchMode;
+	export function setStretchMode(containerId: string, mode: StretchMode): void;
+	export function getZoom(containerId: string): number;
+	export function setZoom(containerId: string, zoom: number): void;
+	export function getViewBounds(containerId: string): [number, number, number, number];
+	export function setViewBounds(
+		containerId: string,
+		xmin: number,
+		xmax: number,
+		ymin: number,
+		ymax: number
+	): void;
+	export function getColormap(containerId: string): string;
+	export function getColormapReversed(containerId: string): boolean;
+	export function getValueRange(containerId: string): [number, number];
+	export function getRotation(containerId: string): number;
+	export function setRotation(containerId: string, degrees: number): void;
+	export function getPivotPoint(containerId: string): [number, number];
+	export function setPivotPoint(containerId: string, x: number, y: number): void;
+	export function getShowPivotMarker(containerId: string): boolean;
+	export function setShowPivotMarker(containerId: string, show: boolean): void;
+	export function onStateChange(
+		containerId: string,
+		callback: (state: ViewerState) => void
+	): void;
+	export function clearCallbacks(containerId: string): void;
+	export function setViewerState(containerId: string, state: ViewerStateConfig): void;
 }

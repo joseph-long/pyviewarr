@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from pyviewarr import ViewarrNormalize, Widget
+from pyviewarr import ViewarrNormalize, ViewArrWidget
 
 
 class TestViewarrNormalize:
@@ -216,7 +216,7 @@ class TestWidget:
 
     def test_widget_creation(self):
         """Widget should be creatable with default values."""
-        widget = Widget()
+        widget = ViewArrWidget()
         assert widget.contrast == 1.0
         assert widget.bias == 0.5
         assert widget.stretch_mode == "linear"
@@ -225,7 +225,7 @@ class TestWidget:
 
     def test_set_array_2d(self):
         """set_array should work with 2D arrays."""
-        widget = Widget()
+        widget = ViewArrWidget()
         data = np.random.rand(100, 200).astype(np.float64)
         widget.set_array(data)
         
@@ -236,7 +236,7 @@ class TestWidget:
 
     def test_set_array_3d(self):
         """set_array should work with 3D arrays."""
-        widget = Widget()
+        widget = ViewArrWidget()
         data = np.random.rand(10, 100, 200).astype(np.float64)
         widget.set_array(data)
         
@@ -247,7 +247,7 @@ class TestWidget:
 
     def test_set_array_4d(self):
         """set_array should work with 4D arrays."""
-        widget = Widget()
+        widget = ViewArrWidget()
         data = np.random.rand(5, 10, 100, 200).astype(np.float64)
         widget.set_array(data)
         
@@ -258,7 +258,7 @@ class TestWidget:
 
     def test_set_array_1d_raises(self):
         """set_array should raise for 1D arrays."""
-        widget = Widget()
+        widget = ViewArrWidget()
         data = np.random.rand(100)
         
         with pytest.raises(ValueError, match="at least 2 dimensions"):
@@ -266,7 +266,7 @@ class TestWidget:
 
     def test_get_current_slice_2d(self):
         """get_current_slice should return the array for 2D input."""
-        widget = Widget()
+        widget = ViewArrWidget()
         data = np.random.rand(100, 200).astype(np.float64)
         widget.set_array(data)
         
@@ -275,7 +275,7 @@ class TestWidget:
 
     def test_get_current_slice_3d(self):
         """get_current_slice should return the correct slice for 3D input."""
-        widget = Widget()
+        widget = ViewArrWidget()
         data = np.arange(5 * 10 * 20).reshape(5, 10, 20).astype(np.float64)
         widget.set_array(data)
         
@@ -290,7 +290,7 @@ class TestWidget:
 
     def test_get_normalization(self):
         """get_normalization should return ViewarrNormalize with current settings."""
-        widget = Widget()
+        widget = ViewArrWidget()
         widget.contrast = 2.0
         widget.bias = 0.3
         widget.stretch_mode = "log"
@@ -309,7 +309,7 @@ class TestWidget:
 
     def test_get_normalization_symmetric(self):
         """get_normalization should handle symmetric mode."""
-        widget = Widget()
+        widget = ViewArrWidget()
         widget.stretch_mode = "symmetric"
         
         norm = widget.get_normalization()
@@ -319,7 +319,7 @@ class TestWidget:
 
     def test_dtype_conversion(self):
         """Widget should handle different numpy dtypes."""
-        widget = Widget()
+        widget = ViewArrWidget()
         
         # Test various dtypes
         for dtype in [np.int8, np.uint8, np.int16, np.uint16, 
@@ -346,7 +346,7 @@ class TestWidgetMatplotlib:
 
     def test_plot_to_matplotlib(self, mock_axes):
         """plot_to_matplotlib should work with basic data."""
-        widget = Widget()
+        widget = ViewArrWidget()
         data = np.random.rand(100, 200).astype(np.float64)
         widget.set_array(data)
         widget.vmin = 0.0
@@ -361,7 +361,7 @@ class TestWidgetMatplotlib:
 
     def test_plot_to_matplotlib_with_cmap(self, mock_axes):
         """plot_to_matplotlib should accept custom colormap."""
-        widget = Widget()
+        widget = ViewArrWidget()
         data = np.random.rand(50, 50).astype(np.float64)
         widget.set_array(data)
         widget.vmin = 0.0
@@ -373,7 +373,7 @@ class TestWidgetMatplotlib:
 
     def test_plot_to_matplotlib_sets_limits(self, mock_axes):
         """plot_to_matplotlib should set xlim/ylim when specified."""
-        widget = Widget()
+        widget = ViewArrWidget()
         data = np.random.rand(100, 200).astype(np.float64)
         widget.set_array(data)
         widget.vmin = 0.0

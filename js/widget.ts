@@ -11,6 +11,9 @@ import {
 	setStretchMode,
 	getViewBounds,
 	setViewBounds,
+	getZoom,
+	setZoom,
+	setViewerState,
 	getColormap,
 	getColormapReversed,
 	getValueRange,
@@ -22,7 +25,9 @@ import {
 	setShowPivotMarker,
 	onStateChange,
 	clearCallbacks,
-	type ViewerState
+	type ViewerState,
+	type ViewerStateConfig,
+	type StretchMode
 } from "viewarr";
 import "./widget.css";
 
@@ -37,10 +42,12 @@ interface WidgetModel {
 	widget_height: number;
 	shape: number[];
 	current_slice_indices: number[];
+	viewer_config: ViewerStateConfig;
 	// Viewer state properties (bidirectional sync)
 	contrast: number;
 	bias: number;
-	stretch_mode: string;
+	stretch_mode: StretchMode;
+	zoom: number;
 	xlim: [number, number];
 	ylim: [number, number];
 	colormap: string;
@@ -146,6 +153,10 @@ function render({ model, el }: RenderProps<WidgetModel>) {
 				model.set("stretch_mode", state.stretchMode);
 				changed = true;
 			}
+			if (Math.abs(model.get("zoom") - state.zoom) > 0.001) {
+				model.set("zoom", state.zoom);
+				changed = true;
+			}
 
 			if (state.xlim && state.ylim) {
 				const currentXlim = model.get("xlim") as [number, number];
@@ -222,6 +233,7 @@ function render({ model, el }: RenderProps<WidgetModel>) {
 			const contrast = getContrast(viewerId);
 			const bias = getBias(viewerId);
 			const stretchMode = getStretchMode(viewerId);
+			const zoom = getZoom(viewerId);
 			const bounds = getViewBounds(viewerId);
 			const colormap = getColormap(viewerId);
 			const colormapReversed = getColormapReversed(viewerId);
@@ -233,6 +245,7 @@ function render({ model, el }: RenderProps<WidgetModel>) {
 			model.set("contrast", contrast);
 			model.set("bias", bias);
 			model.set("stretch_mode", stretchMode);
+			model.set("zoom", zoom);
 			model.set("xlim", [bounds[0], bounds[1]] as [number, number]);
 			model.set("ylim", [bounds[2], bounds[3]] as [number, number]);
 			model.set("colormap", colormap);
@@ -265,12 +278,28 @@ function render({ model, el }: RenderProps<WidgetModel>) {
 			if (xlim[0] !== xlim[1] && ylim[0] !== ylim[1]) {
 				setViewBounds(viewerId, xlim[0], xlim[1], ylim[0], ylim[1]);
 			}
+			// Apply zoom after bounds so explicit zoom is preserved.
+			setZoom(viewerId, model.get("zoom"));
 
 			// Rotation state
 			setRotation(viewerId, model.get("rotation"));
 			const pivot = model.get("pivot") as [number, number];
 			setPivotPoint(viewerId, pivot[0], pivot[1]);
 			setShowPivotMarker(viewerId, model.get("show_pivot_marker"));
+		} catch (e) {
+			// Viewer may not be ready yet
+		}
+	}
+
+	/**
+	 * Apply initial viewer configuration passed from Python.
+	 */
+	function applyInitialViewerConfig(): void {
+		if (!viewerReady || isDisposed) return;
+
+		try {
+			const config = model.get("viewer_config");
+			setViewerState(viewerId, config);
 		} catch (e) {
 			// Viewer may not be ready yet
 		}
@@ -401,6 +430,7 @@ function render({ model, el }: RenderProps<WidgetModel>) {
 			// Register callback for state changes from the viewer
 			onStateChange(viewerId, handleViewerStateChange);
 			updateImage();
+			applyInitialViewerConfig();
 			// Initial sync from viewer to get default values
 			initialSyncViewerToModel();
 		})
@@ -427,6 +457,7 @@ function render({ model, el }: RenderProps<WidgetModel>) {
 	// Listen for shape and slice index changes to update controls
 	model.on("change:shape", renderControls);
 	model.on("change:current_slice_indices", renderControls);
+	model.on("change:viewer_config", applyInitialViewerConfig);
 
 	// Listen for viewer property changes from Python (only apply if not triggered by viewer sync)
 	function handlePropertyChange(): void {
@@ -441,6 +472,7 @@ function render({ model, el }: RenderProps<WidgetModel>) {
 	model.on("change:contrast", handlePropertyChange);
 	model.on("change:bias", handlePropertyChange);
 	model.on("change:stretch_mode", handlePropertyChange);
+	model.on("change:zoom", handlePropertyChange);
 	model.on("change:xlim", handlePropertyChange);
 	model.on("change:ylim", handlePropertyChange);
 	model.on("change:rotation", handlePropertyChange);
